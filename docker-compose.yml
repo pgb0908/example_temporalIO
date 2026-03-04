@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:13
@@ -10,6 +8,11 @@ services:
       - "5432:5432"
     volumes:
       - temporal-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   temporal:
     image: temporalio/auto-setup:latest
@@ -22,7 +25,13 @@ services:
     ports:
       - "7233:7233"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "tctl --address temporal:7233 namespace describe default >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     restart: on-failure
   temporal-ui:
     image: temporalio/ui:latest
@@ -32,7 +41,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - temporal
+      temporal:
+        condition: service_healthy
 
   # ---- [새로 추가된 부분] ----
   python-worker:
@@ -40,7 +50,8 @@ services:
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     depends_on:
-      - temporal
+      temporal:
+        condition: service_healthy
     restart: on-failure # Temporal 서버가 준비되기 전 실패하면 재시작하도록 설정
 
 volumes:

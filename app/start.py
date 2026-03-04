@@ -7,7 +7,8 @@ from workflows import GreetingWorkflow
 async def main():
     # 로컬호스트(외부)에서 접속하므로 localhost:7233 을 사용합니다.
     temporal_address = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
-    client = await Client.connect(temporal_address)
+    temporal_namespace = os.getenv("TEMPORAL_NAMESPACE", "default")
+    client = await Client.connect(temporal_address, namespace=temporal_namespace)
 
     # 워크플로우 실행 요청
     result = await client.execute_workflow(
