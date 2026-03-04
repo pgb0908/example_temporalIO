@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=temporal
+      - POSTGRES_PASSWORD=temporal
+    ports:
+      - "5432:5432"
+    volumes:
+      - temporal-db-data:/var/lib/postgresql/data
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    environment:
+      - DB=postgres12  # <--- 이 부분을 postgresql에서 postgres12로 수정합니다!
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+    ports:
+      - "7233:7233"
+    depends_on:
+      - postgres
+    restart: on-failure
+  temporal-ui:
+    image: temporalio/ui:latest
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - temporal
+
+  # ---- [새로 추가된 부분] ----
+  python-worker:
+    build: ./app # app 폴더의 Dockerfile로 빌드
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
+    restart: on-failure # Temporal 서버가 준비되기 전 실패하면 재시작하도록 설정
+
+volumes:
+  temporal-db-data:
